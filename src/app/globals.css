@@ -23,6 +23,11 @@
    the scrollbar away without the layout jumping sideways to fill the gap. */
 html {
   scrollbar-gutter: stable;
+  scroll-behavior: auto !important;
+}
+
+html:focus-within {
+  scroll-behavior: smooth;
 }
 
 /* Lenis drives scrolling; native smooth behaviour would fight it. */

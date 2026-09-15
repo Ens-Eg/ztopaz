@@ -13,6 +13,15 @@ export function SmoothScroll() {
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
+    // Mobile/touch devices (iOS Safari, Android) have native 120Hz hardware-accelerated
+    // momentum scrolling. Disabling Lenis on touch prevents iOS Safari viewport height
+    // calculation mismatches, rubber-banding conflicts, and unexpected autoscrolls to the bottom.
+    const isTouch =
+      "ontouchstart" in window ||
+      navigator.maxTouchPoints > 0 ||
+      window.matchMedia("(pointer: coarse)").matches;
+    if (isTouch) return;
+
     const lenis = new Lenis({ lerp: 0.1, smoothWheel: true });
     const unregister = registerScroller(lenis);
 

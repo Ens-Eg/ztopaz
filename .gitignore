@@ -44,3 +44,6 @@ next-env.d.ts
 # raw event footage. The project reel streams from YouTube now, so nothing here
 # is transcoded into the site any more.
 /media
+
+AGENTS.md
+CLAUDE.md

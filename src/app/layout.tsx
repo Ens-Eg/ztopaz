@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Inter, Outfit } from "next/font/google";
 import { Preloader } from "@/components/layout/preloader";
+import { ScrollRestoration } from "@/components/layout/scroll-restoration";
 import { COMPANY_NAME, SITE_URL } from "@/data/company";
 import "./globals.css";
 
@@ -59,6 +60,7 @@ export default function RootLayout({
       <body
         className={`${outfit.variable} ${inter.variable} ${cormorant.variable} min-h-full bg-bg font-display text-text`}
       >
+        <ScrollRestoration />
         {/* Ahead of the page so it is painted — and focused — first. */}
         <Preloader />
         {children}

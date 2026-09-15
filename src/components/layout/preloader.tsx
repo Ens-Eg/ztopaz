@@ -62,13 +62,15 @@ export function Preloader() {
     if (!active) return;
     alreadyPlayed = true;
 
+    // Guarantee that page starts at the top (especially on Safari mobile)
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+
     const html = document.documentElement;
     const { body } = document;
     const prevHtmlOverflow = html.style.overflow;
     const prevBodyOverflow = body.style.overflow;
 
-    // Lenis is already live behind the curtain; clamping the document is what
-    // actually stops a wheel gesture from scrolling the hidden page.
+    // Clamping the document stops wheel gestures from scrolling while curtain is up
     html.style.overflow = "hidden";
     body.style.overflow = "hidden";
 
@@ -86,6 +88,10 @@ export function Preloader() {
     const release = () => {
       html.style.overflow = prevHtmlOverflow;
       body.style.overflow = prevBodyOverflow;
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      });
     };
 
     const step = () => {
@@ -133,7 +139,7 @@ export function Preloader() {
         setOpen(true);
         doneTimer = window.setTimeout(() => {
           release();
-          window.scrollTo(0, 0);
+          window.scrollTo({ top: 0, left: 0, behavior: "instant" });
           setGone(true);
         }, CURTAIN_MS);
         return;
