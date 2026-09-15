@@ -10,76 +10,101 @@ import { onScrollFrame, ScrollOrder } from "@/lib/scroll-ticker";
  * the bottom edge into the next section.
  */
 export function Hero() {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const mobileVideoRef = useRef<HTMLVideoElement>(null);
+  const desktopVideoRef = useRef<HTMLVideoElement>(null);
 
   // Being fixed, the hero stays "on screen" as far as the compositor is
   // concerned even once it is fully covered. Pausing it then frees a
   // full-screen 1080p decode for the rest of the page. The check rides the
   // shared ticker so it does not add a second scroll listener next to Lenis.
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
+    const mobileVideo = mobileVideoRef.current;
+    const desktopVideo = desktopVideoRef.current;
 
-    // Explicitly set muted & playsInline on the DOM object for Safari / iOS compatibility
-    video.muted = true;
-    video.defaultMuted = true;
-    video.playsInline = true;
-    video.setAttribute("playsinline", "");
-    video.setAttribute("webkit-playsinline", "");
+    const setupVideo = (video: HTMLVideoElement | null) => {
+      if (!video) return;
+      video.muted = true;
+      video.defaultMuted = true;
+      video.playsInline = true;
+      video.setAttribute("playsinline", "");
+      video.setAttribute("webkit-playsinline", "");
+    };
+
+    setupVideo(mobileVideo);
+    setupVideo(desktopVideo);
 
     let covered: boolean | null = null;
 
-    const tryPlay = () => {
-      const promise = video.play();
-      if (promise !== undefined) {
-        promise.catch(() => {
-          // If autoplay is blocked by browser policy (e.g. iOS Low Power Mode),
-          // resume playback on the first user interaction.
-          const unlock = () => {
-            video.play().catch(() => {});
-            window.removeEventListener("touchstart", unlock);
-            window.removeEventListener("touchend", unlock);
-            window.removeEventListener("scroll", unlock);
-            window.removeEventListener("click", unlock);
-          };
+    const isMobileBreakpoint = () => {
+      return (
+        window.matchMedia("(max-width: 767px)").matches ||
+        /iPhone|iPod|Android.*Mobile/i.test(navigator.userAgent)
+      );
+    };
 
-          window.addEventListener("touchstart", unlock, {
-            passive: true,
-            once: true,
+    const getActiveVideo = () => {
+      return isMobileBreakpoint() ? mobileVideo : desktopVideo;
+    };
+
+    const getInactiveVideo = () => {
+      return isMobileBreakpoint() ? desktopVideo : mobileVideo;
+    };
+
+    const tryPlayActive = () => {
+      const active = getActiveVideo();
+      const inactive = getInactiveVideo();
+
+      if (inactive && !inactive.paused) {
+        inactive.pause();
+      }
+
+      if (active) {
+        const promise = active.play();
+        if (promise !== undefined) {
+          promise.catch(() => {
+            // Unlock on first user interaction if iOS Low Power Mode blocks autoplay
+            const unlock = () => {
+              getActiveVideo()?.play().catch(() => {});
+              window.removeEventListener("touchstart", unlock);
+              window.removeEventListener("touchend", unlock);
+              window.removeEventListener("scroll", unlock);
+              window.removeEventListener("click", unlock);
+            };
+
+            window.addEventListener("touchstart", unlock, {
+              passive: true,
+              once: true,
+            });
+            window.addEventListener("touchend", unlock, {
+              passive: true,
+              once: true,
+            });
+            window.addEventListener("scroll", unlock, {
+              passive: true,
+              once: true,
+            });
+            window.addEventListener("click", unlock, {
+              passive: true,
+              once: true,
+            });
           });
-          window.addEventListener("touchend", unlock, {
-            passive: true,
-            once: true,
-          });
-          window.addEventListener("scroll", unlock, {
-            passive: true,
-            once: true,
-          });
-          window.addEventListener("click", unlock, {
-            passive: true,
-            once: true,
-          });
-        });
+        }
       }
     };
 
-    // Attempt playback immediately
-    tryPlay();
+    // Start playing the relevant video immediately
+    tryPlayActive();
 
-    // Listen to media query changes (viewport resize or orientation change)
-    // to reload the video with the appropriate <source>
-    const mql = window.matchMedia("(max-width: 768px)");
+    const mql = window.matchMedia("(max-width: 767px)");
     const handleMediaChange = () => {
-      video.load();
-      tryPlay();
+      tryPlayActive();
     };
 
     mql.addEventListener("change", handleMediaChange);
 
-    // Resume playback when returning to the tab / Safari app
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible" && !covered) {
-        tryPlay();
+        tryPlayActive();
       }
     };
 
@@ -90,8 +115,12 @@ export function Hero() {
       const next = scroll > window.innerHeight * 0.9;
       if (next === covered) return;
       covered = next;
-      if (next) video.pause();
-      else tryPlay();
+      if (next) {
+        mobileVideo?.pause();
+        desktopVideo?.pause();
+      } else {
+        tryPlayActive();
+      }
     };
 
     check(window.scrollY);
@@ -119,14 +148,36 @@ export function Hero() {
         company in Sharjah, Dubai and Abu Dhabi
       </h1>
 
+      {/* Mobile Video: rendered and displayed strictly on mobile screens (< 768px) */}
       <video
-        ref={videoRef}
-        className="pointer-events-none size-full object-cover"
+        ref={mobileVideoRef}
+        className="pointer-events-none size-full object-cover md:hidden"
         autoPlay
         muted
         loop
         playsInline
         preload="auto"
+        poster="/mobile-poster.webp"
+        aria-hidden="true"
+        style={{
+          transform: "translateZ(0)",
+          WebkitTransform: "translateZ(0)",
+        }}
+        disablePictureInPicture
+        disableRemotePlayback
+      >
+        <source src="/mobile.mp4" type="video/mp4" />
+      </video>
+
+      {/* Desktop Video: rendered and displayed strictly on desktop screens (>= 768px) */}
+      <video
+        ref={desktopVideoRef}
+        className="pointer-events-none size-full object-cover hidden md:block"
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="metadata"
         poster="/hero-poster.webp"
         aria-hidden="true"
         style={{
@@ -136,17 +187,7 @@ export function Hero() {
         disablePictureInPicture
         disableRemotePlayback
       >
-        {/* Mobile video (up to 768px width) */}
-        <source
-          src="/mobile.mp4#t=0.001"
-          type="video/mp4"
-          media="(max-width: 768px)"
-        />
-        {/* Desktop video */}
-        <source
-          src="/home.mp4#t=0.001"
-          type="video/mp4"
-        />
+        <source src="/home.mp4" type="video/mp4" />
       </video>
 
       <div
